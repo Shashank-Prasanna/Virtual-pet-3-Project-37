@@ -3,7 +3,9 @@ var dogSprite;
 var database = firebase.database();
 var milkImage;
 var foodStock = 0;
-var lastFed, foodRef;
+var lastFed = {hour: undefined, minute: undefined, dayHalf: undefined};
+var lastFedRefHour, lastFedRefMinute, lastFedRefDayHalf;
+var foodRef;
 var feedButton, restockButton;
 var foodObj;
 
@@ -11,19 +13,53 @@ function getFoodStock(data) {
 	foodStock = data.val();
 }
 
+function readFedTime(data) {}
+
 function feed() {
 	foodStock = foodStock - 1;
+	if (foodStock < 0) {
+		console.log(alert('Error: You have no food'));
+		foodStock++;
+		return;
+	}
+	lastFed.hour = hour();
+
+	if (lastFed.hour > 11) {
+		lastFed.hour = lastFed.hour % 12;
+		lastFed.dayHalf = 'PM';
+		if (lastFed.hour === 0) {
+			lastFed.hour = 12;
+		}
+	}
+	lastFed.minute = minute();
+
+	if (lastFed.minute < 10) {
+		lastFed.minute = '0' + minute();
+	}
+
 	database.ref('/').update({
 		Food: foodStock,
+	});
+
+	database.ref('LastFeedTime').update({
+		hour: lastFed.hour,
+		minute: lastFed.minute,
+		DayHalf: lastFed.dayHalf,
 	});
 }
 
 function restock() {
 	foodStock++;
+	if (foodStock > 10) {
+		foodStock -= 1;
+		console.log(alert('Error: Cannot add more food to the stock'));
+	}
 	database.ref('/').update({
 		Food: foodStock,
 	});
 }
+
+//SPACER
 
 function preload() {
 	dogImg = loadImage('images/Dog.png');
@@ -42,6 +78,21 @@ function setup() {
 	foodRef = database.ref('Food');
 	foodRef.on('value', getFoodStock);
 
+	lastFedRefHour = database.ref('LastFeedTime/hour');
+	lastFedRefHour.on('value', (data) => {
+		lastFed.hour = data.val();
+	});
+
+	lastFedRefMinute = database.ref('LastFeedTime/minute');
+	lastFedRefMinute.on('value', (data) => {
+		lastFed.minute = data.val();
+	});
+
+	lastFedRefDayHalf = database.ref('LastFeedTime/DayHalf');
+	lastFedRefDayHalf.on('value', (data) => {
+		lastFed.dayHalf = data.val();
+	});
+
 	feedButton = createButton('Feed');
 	feedButton.position(500, 60);
 	feedButton.mousePressed(feed);
@@ -52,7 +103,7 @@ function setup() {
 }
 
 function draw() {
-	background('#00F90E');
+	background('#00BFBF');
 
 	drawSprites();
 
@@ -60,21 +111,15 @@ function draw() {
 	fill('#000000');
 	textSize(20);
 	text('Food: ' + foodStock, 400, 30);
+
+	if (hour() < lastFed.hour + 5) {
+		dogSprite.addImage(happyDogImg);
+	} else {
+		dogSprite.addImage(dogImg);
+	}
+
+	textSize(30);
+	text('Last Fed: ' + lastFed.hour + ':' + lastFed.minute + ' ' + lastFed.dayHalf, 125, 450);
+
 	foodObj.display();
 }
-
-/* Deprecated Functions, use ONLY for reference
-
-function readStock(data) {
-	food = data.val();
-}
-
-function writeStock() {
-	if (food <= 0) {
-		food = 0;
-	}
-	database.ref('/').update({
-		Food: food,
-	});
-}
-*/
