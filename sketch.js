@@ -3,17 +3,17 @@ var dogSprite;
 var database = firebase.database();
 var milkImage;
 var foodStock = 0;
-var lastFed = {hour: undefined, minute: undefined, dayHalf: undefined};
-var lastFedRefHour, lastFedRefMinute, lastFedRefDayHalf;
+var lastFed = {hour: undefined, minute: undefined, dayHalf: undefined, day: undefined};
+var lastFedRefHour, lastFedRefMinute, lastFedRefDayHalf, gameStateRef;
 var foodRef;
 var feedButton, restockButton;
 var foodObj;
+var gameState = 'Playing';
+var bedroomImg, gardenImg, bathroomImg, livingRoomImg;
 
 function getFoodStock(data) {
 	foodStock = data.val();
 }
-
-function readFedTime(data) {}
 
 function feed() {
 	foodStock = foodStock - 1;
@@ -22,6 +22,7 @@ function feed() {
 		foodStock++;
 		return;
 	}
+	lastFed.day = day();
 	lastFed.hour = hour();
 
 	if (lastFed.hour > 11) {
@@ -45,6 +46,7 @@ function feed() {
 		hour: lastFed.hour,
 		minute: lastFed.minute,
 		DayHalf: lastFed.dayHalf,
+		day: lastFed.day,
 	});
 }
 
@@ -59,12 +61,23 @@ function restock() {
 	});
 }
 
+function updateGameState() {
+	database.ref('/').update({
+		GameState: gameState,
+	});
+}
+
 //SPACER
 
 function preload() {
 	dogImg = loadImage('images/Dog.png');
 	milkImage = loadImage('images/Milk.png');
 	happyDogImg = loadImage('images/happydog.png');
+
+	bedroomImg = loadImage('images/Bed Room.png');
+	bathroomImg = loadImage('images/Wash Room.png');
+	gardenImg = loadImage('images/Garden.png');
+	livingRoomImg = loadImage('images/Living Room.png');
 }
 
 function setup() {
@@ -103,7 +116,43 @@ function setup() {
 }
 
 function draw() {
-	background('#00BFBF');
+	//background('black');
+
+	if (hour() % 12 === lastFed.hour || hour() === lastFed.hour) {
+		background(livingRoomImg);
+		dogSprite.visible = false;
+		feedButton.hide();
+		restockButton.hide();
+	} else if (hour() % 12 > lastFed.hour || hour() > lastFed.hour) {
+		background(gardenImg);
+		dogSprite.visible = false;
+		feedButton.hide();
+		restockButton.hide();
+	} else if (hour() % 12 > lastFed.hour + 1) {
+		background(bathroomImg);
+		dogSprite.visible = false;
+		feedButton.hide();
+		restockButton.hide();
+	} else if (hour() % 12 > lastFed.hour + 2) {
+		background(bedroomImg);
+		dogSprite.visible = false;
+		feedButton.hide();
+		restockButton.hide();
+	} else if (hour() % 12 > lastFed.hour + 3) {
+		background('#1BDD26');
+		dogSprite.visible = true;
+		dogSprite.addImage(dogImg);
+		feedButton.show();
+		restockButton.show();
+	} else if (hour() % 12 > lastFed.hour + 10) {
+		background('#1BDD26');
+		dogSprite.visible = true;
+		dogSprite.addImage('images/deadDog.png');
+		feedButton.show();
+		restockButton.show();
+	} else {
+		background(livingRoomImg);
+	}
 
 	drawSprites();
 
@@ -112,14 +161,16 @@ function draw() {
 	textSize(20);
 	text('Food: ' + foodStock, 400, 30);
 
+	/*
 	if (hour() < lastFed.hour + 5) {
 		dogSprite.addImage(happyDogImg);
 	} else {
 		dogSprite.addImage(dogImg);
 	}
+	*/
 
 	textSize(30);
-	text('Last Fed: ' + lastFed.hour + ':' + lastFed.minute + ' ' + lastFed.dayHalf, 125, 450);
+	text('Last Fed: ' + lastFed.hour + ':' + lastFed.minute + ' ' + lastFed.dayHalf, 125, 490);
 
 	foodObj.display();
 }
